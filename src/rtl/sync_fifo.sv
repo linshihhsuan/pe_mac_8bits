@@ -8,10 +8,10 @@ module sync_fifo #(
     input wire [DATA_WIDTH-1:0] i_wr_data,  // Data to be written
     input wire i_rd_en,  // Read enable signal
     
-    output reg [DATA_WIDTH-1:0] o_rd_data,  // Data read from the FIFO
+    output reg [DATA_WIDTH-1:0] o_rd_data_r,  // Data read from the FIFO
     output wire o_full,  // 1 when FIFO is completely o_full
     output wire o_empty,  // 1 when FIFO is completel o_empty
-    output reg [$clog2(DEPTH+1)-1:0] o_data_count  // Tracks current number of items
+    output reg [$clog2(DEPTH+1)-1:0] o_data_count_r  // Tracks current number of items
 );
 
     // ADDR_WIDTH = 5, means no.5 of bits required to represent 32 (0000 to 11111)
@@ -29,8 +29,8 @@ module sync_fifo #(
     wire write_accepted;
 
     // Status flags generation
-    assign o_empty = (o_data_count == 0);
-    assign o_full = (o_data_count == DEPTH);
+    assign o_empty = (o_data_count_r == 0);
+    assign o_full = (o_data_count_r == DEPTH);
 
     // A read is accepted if requested and the FIFO is noo_empty
     assign read_accepted = i_rd_en &&o_empty;
@@ -45,8 +45,8 @@ module sync_fifo #(
             // Reset all pointers, counters, and output data
             write_pointer_r <= {ADDR_WIDTH{1'b0}};
             read_pointer_r  <= {ADDR_WIDTH{1'b0}};
-            o_data_count    <= 0;
-            o_rd_data       <= {DATA_WIDTH{1'b0}};
+            o_data_count_r    <= 0;
+            o_rd_data_r       <= {DATA_WIDTH{1'b0}};
         end
         else begin
             // Handle Write Operation
@@ -62,7 +62,7 @@ module sync_fifo #(
 
             // Handle Read Operation
             if (read_accepted) begin
-                o_rd_data <= memory_r[read_pointer_r]; // Fetch data
+                o_rd_data_r <= memory_r[read_pointer_r]; // Fetch data
 
                 // Circular pointer logic: wrap around to 0 if at the end
                 if (read_pointer_r == DEPTH - 1)
@@ -73,9 +73,9 @@ module sync_fifo #(
 
             // Update the data count based on concurrent read/write actions
             case ({write_accepted, read_accepted})
-                2'b10: o_data_count <= o_data_count + 1'b1; // Write only
-                2'b01: o_data_count <= o_data_count - 1'b1; // Read only
-                default: o_data_count <= o_data_count;      // Both or neither (count unchanged)
+                2'b10: o_data_count_r <= o_data_count_r + 1'b1; // Write only
+                2'b01: o_data_count_r <= o_data_count_r - 1'b1; // Read only
+                default: o_data_count_r <= o_data_count_r;      // Both or neither (count unchanged)
             endcase
         end
     end
